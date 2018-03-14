@@ -1,3 +1,14 @@
+
+# Automatically generate code for Qt moc, uic and rcc files
+# Since CMake 2.8.6
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+#set(sanitize "-fsanitize=address")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sanitize}")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${sanitize}")
+
 set(SOURCES
 
     # Isolated Scope #1
@@ -42,12 +53,16 @@ set(SOURCES
     core/domain/App.cpp
     core/mongodb/MongoClient.cpp
     core/mongodb/MongoWorker.cpp
+    core/mongodb/ReplicaSet.cpp
     core/settings/SettingsManager.cpp
     core/AppRegistry.cpp
+    utils/string_operations.cpp
+    utils/common.cpp
 
     # Isolated Scope #3
     gui/GuiRegistry.cpp
     gui/dialogs/AboutDialog.cpp
+    gui/dialogs/EulaDialog.cpp
     gui/dialogs/ConnectionAdvancedTab.cpp
     gui/dialogs/ConnectionAuthTab.cpp
     gui/dialogs/ConnectionBasicTab.cpp
@@ -55,6 +70,7 @@ set(SOURCES
     gui/dialogs/ConnectionDialog.cpp
     gui/dialogs/CopyCollectionDialog.cpp
     gui/widgets/workarea/IndicatorLabel.cpp
+    gui/dialogs/CreateCollectionDialog.cpp
     gui/dialogs/CreateDatabaseDialog.cpp
     gui/dialogs/CreateUserDialog.cpp
     gui/utils/ComboBoxUtils.cpp
@@ -63,6 +79,9 @@ set(SOURCES
     # Isolated scope #4
     gui/dialogs/PreferencesDialog.cpp
     gui/dialogs/ConnectionsDialog.cpp
+    gui/dialogs/CreateConnectionDialog.cpp
+    gui/dialogs/ExportDialog.cpp
+    gui/dialogs/ChangeShellTimeoutDialog.cpp
 
     # Isolated scope #5
     gui/editors/PlainJavaScriptEditor.cpp
@@ -74,6 +93,8 @@ set(SOURCES
     # Isolated scope #6
     gui/widgets/explorer/ExplorerCollectionTreeItem.cpp
     gui/widgets/explorer/ExplorerTreeItem.cpp
+    gui/widgets/explorer/ExplorerReplicaSetFolderItem.cpp
+    gui/widgets/explorer/ExplorerReplicaSetTreeItem.cpp
     gui/widgets/explorer/ExplorerDatabaseTreeItem.cpp
     gui/widgets/explorer/ExplorerDatabaseCategoryTreeItem.cpp
     gui/widgets/explorer/ExplorerUserTreeItem.cpp
@@ -104,14 +125,22 @@ set(SOURCES
     gui/widgets/workarea/QueryWidget.cpp
     gui/widgets/workarea/WorkAreaTabBar.cpp
     gui/widgets/workarea/WorkAreaTabWidget.cpp
+    gui/widgets/workarea/WelcomeTab.cpp
 
     # Final scope
     gui/widgets/LogWidget.cpp
     gui/MainWindow.cpp
 
+    gui/dialogs/SSHTunnelTab.cpp
+    gui/dialogs/SSLTab.cpp
+    core/settings/SshSettings.cpp
+    core/settings/SslSettings.cpp
+    core/settings/ReplicaSetSettings.cpp
+    core/mongodb/SshTunnelWorker.cpp
+
+    resources/robo.qrc
     gui/resources/gui.qrc
 )
-
 
 # Robomongo target
 add_executable(robomongo MACOSX_BUNDLE WIN32 app/main.cpp ${SOURCES})
@@ -119,10 +148,23 @@ add_executable(robomongo MACOSX_BUNDLE WIN32 app/main.cpp ${SOURCES})
 target_link_libraries(robomongo
     PRIVATE
         Qt5::Widgets
+        Qt5::Network
+        Qt5::Xml
         qjson
         qscintilla
         mongodb
+        ssh
         Threads::Threads)   # Target from FindThreads CMake module
+
+if(APPLE)
+  find_library(SECURITY NAMES Security)
+  find_library(CORE_FOUNDATION NAMES CoreFoundation)
+  set(SSL_LIBRARIES ${SECURITY} ${CORE_FOUNDATION})
+  
+  target_link_libraries(robomongo
+    PRIVATE
+        ${SSL_LIBRARIES})    
+endif(APPLE)
 
 target_include_directories(robomongo
     PRIVATE
@@ -139,6 +181,8 @@ target_compile_definitions(robomongo
         PROJECT_GITHUB_FORK="${PROJECT_GITHUB_FORK}"
         PROJECT_GITHUB_ISSUES="${PROJECT_GITHUB_ISSUES}"
         PROJECT_VERSION="${PROJECT_VERSION}"
+        PROJECT_VERSION_SHORT="${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+        PROJECT_QT_VERSION="${Qt5Core_VERSION}"
         PROJECT_NAME_LOWERCASE="${PROJECT_NAME_LOWERCASE}")
 
 if(SYSTEM_WINDOWS)
@@ -156,7 +200,7 @@ if(SYSTEM_WINDOWS)
 
     # Rename output name for Windows
     set_target_properties(robomongo PROPERTIES
-        OUTPUT_NAME "Robomongo")
+        OUTPUT_NAME "robo3t")
 
     # Seems that we do not need to do this with recent versions of Qt
     target_link_libraries(robomongo
@@ -166,20 +210,21 @@ if(SYSTEM_WINDOWS)
 elseif(SYSTEM_MACOSX)
     set_target_properties(robomongo PROPERTIES
         INSTALL_RPATH "@executable_path/../Frameworks"
-        OUTPUT_NAME "Robomongo"
+        OUTPUT_NAME "Robo 3T"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/install/macosx/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME "Robomongo"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.paralect.Robomongo"
-        MACOSX_BUNDLE_INFO_STRING "Robomongo ${PROJECT_VERSION}. Copyright Paralect, 2013 - 2016"
+        MACOSX_BUNDLE_BUNDLE_NAME "Robo 3T"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.3tsoftwarelabs.robo3t"
+        MACOSX_BUNDLE_INFO_STRING "Robo 3T ${PROJECT_VERSION}. Copyright 3T Software Labs Ltd, 2014 - 2017"
         MACOSX_BUNDLE_SHORT_VERSION "${PROJECT_VERSION}"
         MACOSX_BUNDLE_LONG_VERSION "${PROJECT_VERSION}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_COPYRIGHT "Copyright Paralect, 2013 - 2016"
-        MACOSX_BUNDLE_ICON_FILE "Robomongo")
+        MACOSX_BUNDLE_COPYRIGHT "Copyright 3T Software Labs Ltd, 2014 - 2017"
+        MACOSX_BUNDLE_ICON_FILE "robomongo")
 
 elseif(SYSTEM_LINUX)
     set_target_properties(robomongo PROPERTIES
-        INSTALL_RPATH "$ORIGIN/../lib")
+        INSTALL_RPATH "$ORIGIN/../lib"
+        OUTPUT_NAME "robo3t")
 endif()
 
 # Install

@@ -2,9 +2,12 @@
 
 #include <mongo/client/dbclientinterface.h>
 //#include <mongo/bson/bsonobjiterator.h>
+#include "mongo/util/base64.h"
+#include "mongo/util/stringutils.h"
+
+#include "robomongo/core/utils/Logger.h"
 #include "robomongo/core/utils/QtUtils.h"
 #include "robomongo/core/HexUtils.h"
-#include "mongo/util/base64.h"
 
 // v0.9
 #include "robomongo/shell/db/ptimeutil.h"
@@ -80,23 +83,25 @@ namespace Robomongo
             s << (isArray ? "[" : "{");
             BSONObjIterator i(obj);
             BSONElement e = i.next();
-            if ( !e.eoo() ){
+
+            if ( !e.eoo() ) {
                 while ( 1 ) {
                     if ( pretty ) {
                         s << '\n';
-                        for( int x = 0; x < pretty; x++ ){
+                        for( int x = 0; x < pretty; x++ ) {
                             s << "    ";
                         }
                     }
                     else {
                         s << " ";
                     }
-                    s << jsonString(e, format, true, pretty?pretty+1:0, uuidEncoding, timeFormat, isArray);
+
+                    s << jsonString(e, format, true, pretty ? pretty + 1 : 0, uuidEncoding, timeFormat, isArray);
                     e = i.next();
 
                     if (e.eoo()) {
                         s << '\n';
-                        for( int x = 0; x < pretty - 1; x++ ){
+                        for( int x = 0; x < pretty - 1; x++ ) {
                             s << "    ";
                         }
                         s << (isArray ? "]" : "}");
@@ -109,7 +114,8 @@ namespace Robomongo
             return s.str();
         }
 
-        std::string jsonString(const BSONElement &elem, JsonStringFormat format, bool includeFieldNames, int pretty, UUIDEncoding uuidEncoding, SupportedTimes timeFormat, bool isArray)
+        std::string jsonString(const BSONElement &elem, JsonStringFormat format, bool includeFieldNames, 
+                               int pretty, UUIDEncoding uuidEncoding, SupportedTimes timeFormat, bool isArray)
         {
             using namespace std;
             BSONType t = elem.type();            
@@ -130,33 +136,36 @@ namespace Robomongo
                 s << "NumberLong(" << elem._numberLong() << ")";
                 break;
             case NumberInt:
+                s << elem._numberInt();
+                break;
             case NumberDouble:
                 {
-                    int sign=0;
                     if ( elem.number() >= -std::numeric_limits< double >::max() &&
-                            elem.number() <= std::numeric_limits< double >::max() ) {
+                         elem.number() <= std::numeric_limits< double >::max() ) {
+                        std::stringstream ss;
+                        ss.precision(std::numeric_limits<double>::digits10);
+                        ss << elem.Double();
+                        std::string const str =
+                            reformatDoubleString(QString::fromStdString(ss.str()), elem.Double());
 
-                        // was 16
-                        s.precision(std::numeric_limits<double>::digits10);
-                        s << elem.number();
+                        s << (str);
                     }
-                    else if (std::isnan(elem.number()) ) {
+                    else if (std::isnan(elem.number()) ) {                        
                         s << "NaN";
                     }
                     else if (std::isinf(elem.number()) ) {
-                        s << "Infinity";
-//                        s << ( sign == 1 ? "Infinity" : "-Infinity");
+                        s << (std::to_string(elem.number()) == "inf" ? "Infinity" : "-Infinity");
                     }
                     else {
                         StringBuilder ss;
-                        ss << "Number " << elem.number() << " cannot be represented in JSON";
-                        string message = ss.str();
-                        //massert( 10311 ,  message.c_str(), false );
+                        ss << "BsonUtils::jsonString(): Number " << elem.number() 
+                           << " cannot be represented in JSON";
+                        LOG_MSG(ss.str(), mongo::logger::LogSeverity::Error());
                     }
                     break;
                 }
             case NumberDecimal:
-                s << "NumberDecimal(" << elem._numberDecimal().toString() << ")";
+                s << "NumberDecimal(\"" << elem._numberDecimal().toString() << "\")";
                 break;
             case mongo::Bool:
                 s << ( elem.boolean() ? "true" : "false" );
@@ -166,7 +175,7 @@ namespace Robomongo
                 break;
             case Object: {
                 BSONObj obj = elem.embeddedObject();
-                s << jsonString(obj, format, pretty, uuidEncoding,timeFormat);
+                s << jsonString(obj, format, pretty, uuidEncoding, timeFormat);
                 }
                 break;
             case mongo::Array: {
@@ -180,7 +189,7 @@ namespace Robomongo
                 if ( !e.eoo() ) {
                     int count = 0;
                     while ( 1 ) {
-                        if( pretty ) {
+                        if ( pretty ) {
                             s << '\n';
                             for( int x = 0; x < pretty; x++ )
                                 s << "    ";
@@ -190,7 +199,7 @@ namespace Robomongo
                             s << "undefined";
                         }
                         else {
-                            s << jsonString(e, format, false, pretty?pretty+1:0, uuidEncoding, timeFormat, true);
+                            s << jsonString(e, format, false, pretty ? pretty + 1 : 0, uuidEncoding, timeFormat, true);
                             e = i.next();
                         }
                         count++;
@@ -260,13 +269,13 @@ namespace Robomongo
             case mongo::Date:
                 {
                     Date_t d = elem.date();
-                    long long ms = d.toMillisSinceEpoch();//static_cast<long long>(d.millis);
+                    long long ms = d.toMillisSinceEpoch(); //static_cast<long long>(d.millis);
                     bool isSupportedDate = miutil::minDate < ms && ms < miutil::maxDate;
 
                     if ( format == Strict )
                         s << "{ \"$date\" : ";
                     else{
-                        if(isSupportedDate){
+                        if (isSupportedDate) {
                             s << "ISODate(";
                         }
                         else{
@@ -275,7 +284,7 @@ namespace Robomongo
                     }
 
                     if ( pretty && isSupportedDate) {
-                        boost::posix_time::ptime epoch(boost::gregorian::date(1970,1,1));
+                        boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
                         boost::posix_time::time_duration diff = boost::posix_time::millisec(ms);
                         boost::posix_time::ptime time = epoch + diff;
                         std::string timestr = miutil::isotimeString(time, true, timeFormat == LocalTime);
@@ -325,12 +334,11 @@ namespace Robomongo
                 break;
 
             case bsonTimestamp:
-                if ( format == TenGen ) {
-                    s << "Timestamp(" << ( elem.timestampValue() / 1000 ) << ", " << elem.timestampInc() << ")";
-                }
-                else {
-                    s << "{ \"$timestamp\" : { \"t\" : " << ( elem.timestampValue() / 1000 ) << ", \"i\" : " << elem.timestampInc() << " } }";
-                }
+                if ( format == TenGen )
+                    s << "Timestamp(" << elem.timestamp().getSecs() << ", " << elem.timestampInc() << ")";
+                else 
+                    s << "{ \"$timestamp\" : { \"t\" : " << elem.timestamp().getSecs() << ", \"i\" : " 
+                      << elem.timestampInc() << " } }";
                 break;
 
             case MinKey:
@@ -426,7 +434,7 @@ namespace Robomongo
                 /** double precision floating point value */
             case NumberDecimal:
                 {
-                    return "Decimal";
+                    return "Decimal128";
                 }
                 /** character string, stored in utf8 */
             case String:
@@ -563,22 +571,40 @@ namespace Robomongo
                 con.append(e.fieldName());
                 con.append("\"");
                 con.append(" : ");
-                buildJsonString(e,con,uuid,tz);
+                buildJsonString(e, con, uuid, tz);
                 con.append(", \n");
             }
             con.append("\n}\n\n");
         }
 
-        void buildJsonString(const mongo::BSONElement &elem,std::string &con, UUIDEncoding uuid, SupportedTimes tz)
+        void buildJsonString(const mongo::BSONElement &elem, std::string &con, UUIDEncoding uuid, SupportedTimes tz)
         {
             switch (elem.type())
             {
             case NumberDouble:
                 {
-                    std::stringstream s;
-                    s.precision(std::numeric_limits<double>::digits10);
-                    s << elem.Double();
-                    con.append(s.str());
+                    if (elem.number() >= -std::numeric_limits< double >::max() &&
+                        elem.number() <= std::numeric_limits< double >::max()) {
+                        std::stringstream ss;
+                        ss.precision(std::numeric_limits<double>::digits10);
+                        ss << elem.Double();          
+                        std::string const str = 
+                            reformatDoubleString(QString::fromStdString(ss.str()), elem.Double());
+
+                        con.append(str);
+                    }
+                    else if (std::isnan(elem.number())) {
+                        con.append("NaN");
+                    }
+                    else if (std::isinf(elem.number())) {
+                        con.append(std::to_string(elem.number()) == "inf" ? "Infinity" : "-Infinity");
+                    }
+                    else {
+                        StringBuilder ss;
+                        ss << "BsonUtils::buildJsonString(): Number " << elem.number() 
+                           << " cannot be represented in JSON";
+                        LOG_MSG(ss.str(), mongo::logger::LogSeverity::Error());
+                    }
                 }
                 break;
             case String:
@@ -626,13 +652,13 @@ namespace Robomongo
                     long long ms = (long long) elem.Date().toMillisSinceEpoch();
                     bool isSupportedDate = miutil::minDate < ms && ms < miutil::maxDate;
 
-                    boost::posix_time::ptime epoch(boost::gregorian::date(1970,1,1));
+                    boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
                     boost::posix_time::time_duration diff = boost::posix_time::millisec(ms);
                     boost::posix_time::ptime time = epoch + diff;
 
                     std::string date;
-                    if(isSupportedDate)
-                        date = miutil::isotimeString(time,false,tz==LocalTime);
+                    if (isSupportedDate)
+                        date = miutil::isotimeString(time, false, tz == LocalTime);
                     else
                         date = boost::lexical_cast<std::string>(ms);
 
@@ -652,7 +678,7 @@ namespace Robomongo
                         case 'g':
                         case 'i':
                         case 'm':
-                            con+=*f;
+                            con += *f;
                         default:
                             break;
                         }
@@ -678,15 +704,15 @@ namespace Robomongo
                 break;
             case NumberInt:
                 {
-                    char num[16]={0};
-                    sprintf(num,"%d",elem.Int());
+                    char num[16] = {0};
+                    sprintf(num, "%d", elem.Int());
                     con.append(num);
                     break;
                 }           
             case bsonTimestamp:
                 {
                     Date_t date = elem.timestampTime();
-                    unsigned long long millis = date.toMillisSinceEpoch();// millis;
+                    unsigned long long millis = date.toMillisSinceEpoch(); // millis;
                     if ((long long)millis >= 0 &&
                         ((long long)millis/1000) < (std::numeric_limits<time_t>::max)()) {
                             con.append(date.toString());
@@ -695,24 +721,29 @@ namespace Robomongo
                 }
             case NumberLong:
                 {
-                    char num[32]={0};
-                    sprintf(num,"%lld",elem.Long());
+                    char num[32] = {0};
+                    sprintf(num, "%lld", elem.Long());
                     con.append(num);
                     break; 
                 }
+			case NumberDecimal:
+			{
+				con.append(elem.numberDecimal().toString());
+				break;
+			}
             default:
                 con.append("<unsupported>");
                 break;
             }
         }
 
-        mongo::BSONElement indexOf(const mongo::BSONObj &doc,int index)
+        mongo::BSONElement indexOf(const mongo::BSONObj &doc, int index)
         {
             mongo::BSONObjIterator iterator(doc);
             for (int i = 0; iterator.more(); ++i)
             {
                 mongo::BSONElement element = iterator.next(); 
-                if(i==index){
+                if (i == index) {
                     return element;
                 }
             }
@@ -722,12 +753,32 @@ namespace Robomongo
         int elementsCount(const mongo::BSONObj &doc)
         {
             mongo::BSONObjIterator iterator(doc);
-            int i=0;
+            int i = 0;
             for (; iterator.more(); ++i)
             {
                 iterator.next();                
             }
             return i;
+        }
+
+        std::string reformatDoubleString(QString str, double elemDouble)
+        {
+            // Leave trailing zero if needed
+            if (!str.contains("e+", Qt::CaseInsensitive) && 
+                !str.contains("e-", Qt::CaseInsensitive) && elemDouble == (long long)elemDouble)
+                str.append(".0");          
+            else if (str.endsWith("e+15", Qt::CaseInsensitive) || 
+                     str.endsWith("e+16", Qt::CaseInsensitive)) {
+                // Disable scientific format
+                std::stringstream ss2;
+                ss2.precision(std::numeric_limits<double>::digits10);
+                ss2 << std::fixed << elemDouble;
+                str = QString::fromStdString(ss2.str());
+                while (str.contains('.') && str.endsWith("00"))
+                    str.chop(1);
+            }
+
+            return str.toStdString();
         }
 
     } // BsonUtils

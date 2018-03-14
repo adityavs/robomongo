@@ -2,13 +2,16 @@
 
 #include <QDir>
 #include <QMetaType>
+
 #include "robomongo/core/utils/QtUtils.h"
 
 namespace
 {
     std::string getLoggerPath()
     {
-        static std::string path = Robomongo::QtUtils::toStdString(QString("%1/" PROJECT_NAME_LOWERCASE ".log").arg(QDir::tempPath()));
+        static std::string path = 
+            Robomongo::QtUtils::toStdString(QString("%1/" PROJECT_NAME_LOWERCASE ".log").arg(QDir::tempPath()));
+
         return path;
     }
 }
@@ -46,7 +49,15 @@ namespace Robomongo
     {
         // v0.9
 //        LOG(level) << "[" PROJECT_NAME_TITLE "] " << QtUtils::toStdString(mess) << std::endl;
-//        if (notify)
-//            emit printed(mess, level);
+        if (notify) {
+            // Make uniform log level strings e.g "Error: ", "Info: " etc...
+            auto logLevelStr = QString::fromStdString(level.toStringData().toString());
+            if (!logLevelStr.isEmpty()) {
+                logLevelStr = logLevelStr.toLower();
+                logLevelStr[0] = logLevelStr[0].toUpper();
+                logLevelStr += ": ";
+            }
+            emit printed(logLevelStr + mess, level);
+        }
     }
 }

@@ -24,7 +24,7 @@ if(SYSTEM_LINUX)
     set(qt_conf_dir         ${bin_dir})
     set(qt_conf_plugins     "../lib")
 elseif(SYSTEM_MACOSX)
-    set(bundle_name         Robomongo.app)
+    set(bundle_name         "Robo 3T.app")
     set(contents_path       ${bundle_name}/Contents)
 
     set(bin_dir             ${contents_path}/MacOS)
@@ -56,6 +56,29 @@ install(
     FILES       "${CMAKE_BINARY_DIR}/qt.conf"
     DESTINATION "${qt_conf_dir}")
 
+# Install OpenSSL dynamic lib files
+if(SYSTEM_WINDOWS)
+    install(
+        FILES 
+        "${OpenSSL_DIR}/out32dll/ssleay32.dll"
+        "${OpenSSL_DIR}/out32dll/libeay32.dll"
+        DESTINATION ${bin_dir})
+elseif(SYSTEM_MACOSX)
+    install(
+        FILES 
+        "${OpenSSL_DIR}/libssl.1.0.0.dylib"
+        "${OpenSSL_DIR}/libcrypto.1.0.0.dylib"
+        DESTINATION ${lib_dir}/lib)
+elseif(SYSTEM_LINUX)
+    install(
+        FILES 
+        "${OpenSSL_DIR}/libssl.so"
+        "${OpenSSL_DIR}/libssl.so.1.0.0"        
+        "${OpenSSL_DIR}/libcrypto.so"        
+        "${OpenSSL_DIR}/libcrypto.so.1.0.0"
+        DESTINATION ${lib_dir})         
+endif()
+
 # Install binary
 install(
     TARGETS robomongo
@@ -72,16 +95,21 @@ install(
     DESTINATION ${license_dir})
 
 # Install common dependencies
-install_qt_lib(Core Gui Widgets PrintSupport)
+install_qt_lib(Core Gui Widgets PrintSupport Network Xml)
 install_qt_plugins(QGifPlugin QICOPlugin)
 install_icu_libs()
 
 if(SYSTEM_LINUX)
     install_qt_lib(XcbQpa DBus)
     install_qt_plugins(
-        QGtk2ThemePlugin
         QXcbIntegrationPlugin)
-
+        
+    # Install newer versions of libstdc++ to support C++11
+    install(
+        FILES
+            "/usr/lib/x86_64-linux-gnu/libstdc++.so.6"
+            "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.22"
+        DESTINATION ${lib_dir})
 elseif(SYSTEM_MACOSX)
     install_qt_lib(MacExtras DBus)
     install_qt_plugins(
@@ -91,7 +119,7 @@ elseif(SYSTEM_MACOSX)
 
     # Install icon
     install(
-        FILES       "${CMAKE_SOURCE_DIR}/install/macosx/Robomongo.icns"
+        FILES       "${CMAKE_SOURCE_DIR}/install/macosx/robomongo.icns"
         DESTINATION "${resources_dir}")
 elseif(SYSTEM_WINDOWS)
     install_qt_plugins(
@@ -105,4 +133,3 @@ elseif(SYSTEM_WINDOWS)
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
     include(InstallRequiredSystemLibraries)
 endif()
-

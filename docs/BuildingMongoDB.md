@@ -1,26 +1,49 @@
-Building MongoDB 
-================
+Building Robomongo Shell (Old Document)
+========================
 
-Linux and Mac
--------------
+**Important Note:**  
+This document is for versions 1.0 and earlier and for MongoDB 3.2.  
+See latest documents here: https://github.com/Studio3T/robomongo/wiki
 
-Clone MongoDB fork and checkout to "roboshell-v3.2" branch:
+Robomongo uses [modified version](https://github.com/paralect/robomongo-shell/tree/roboshell-v3.2) of MongoDB that we call Robomongo Shell. Before you can build Robomongo, you have to build Robomongo Shell. The following instructions are applicable only for Mac OS X and Linux. For Windows instructions please check [Building Robomongo on Windows](BuildingRobomongoOnWindows.md).
 
-    $ git clone git@github.com:paralect/robomongo-shell.git
-    $ cd robomongo-shell
-    $ git checkout roboshell-v3.2
-    
-Build MongoDB shell in release mode:
+Build for Mac OS X or Linux
+---------------------------
 
-    $ bin/build
+#### Prerequisites
 
-Clean build files for release mode:
+1. Install [Scons](http://scons.org/tag/releases.html) (2.4 or later)
+
+
+2. Clone Robomongo Shell and checkout to `roboshell-v3.2` branch:
+
+  ```sh
+  $ git clone https://github.com/paralect/robomongo-shell.git
+  $ cd robomongo-shell
+  $ git checkout roboshell-v3.2
+  ```
+
+3. Build Robomongo Shell:
+
+  ```sh
+  $ bin/build
+  ```
+
+Done! Now you can continue with [Step 2](BuildingRobomongo.md#step-2) and build Robomongo 
+with embedded MongoDB 3.2 shell (that you've just built).
+
+
+<br/>
+#### Advanced helper commands
+
+The following commands are needed only if you are planning to develop or deeper understand
+Robomongo or Robomongo Shell build processes.
+
+Clean build files for release mode (folder `build/opt` will be removed):
 
     $ bin/clean
-    
-#### Advanced
 
-Here is command that is executed by `bin/build` script:
+Here is a command that is executed by `bin/build` script:
 
     $ scons mongo -j8 --release --osx-version-min=10.9
     

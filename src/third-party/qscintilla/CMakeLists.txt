@@ -3,6 +3,11 @@
 
 project(QScintilla)
 
+# Automatically generate code for Qt moc, uic and rcc files
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
 # For some reasons AUTOMOC doesn't work here...
 # Doing this manually.
 qt5_wrap_cpp(moc
@@ -189,34 +194,31 @@ add_library(qscintilla
 #    sources/lexers/LexD.cpp
 #    sources/lexers/LexPS.cpp
 
-    sources/src/EditModel.cpp
-    sources/src/EditView.cpp
-    sources/src/ExternalLexer.cpp
-    sources/src/ViewStyle.cpp
-    sources/src/Editor.cpp
-    sources/src/Selection.cpp
-    sources/src/XPM.cpp
     sources/src/AutoComplete.cpp
-    sources/src/CharClassify.cpp
-    sources/src/PerLine.cpp
-    sources/src/Style.cpp
-    sources/src/Indicator.cpp
-    sources/src/CaseConvert.cpp
-    sources/src/KeyMap.cpp
-    sources/src/CellBuffer.cpp
-    sources/src/ContractionState.cpp
-    sources/src/Document.cpp
-    sources/src/RESearch.cpp
-    sources/src/Decoration.cpp
-    sources/src/LineMarker.cpp
-    sources/src/UniConversion.cpp
-    sources/src/MarginView.cpp
-    sources/src/PositionCache.cpp
-    sources/src/RunStyles.cpp
-    sources/src/Catalogue.cpp
     sources/src/CallTip.cpp
-    sources/src/ScintillaBase.cpp
+    sources/src/CaseConvert.cpp
     sources/src/CaseFolder.cpp
+    sources/src/Catalogue.cpp
+    sources/src/CellBuffer.cpp
+    sources/src/CharClassify.cpp
+    sources/src/ContractionState.cpp
+    sources/src/Decoration.cpp
+    sources/src/Document.cpp
+    sources/src/Editor.cpp
+    sources/src/ExternalLexer.cpp
+    sources/src/Indicator.cpp
+    sources/src/KeyMap.cpp
+    sources/src/LineMarker.cpp
+    sources/src/PerLine.cpp
+    sources/src/PositionCache.cpp
+    sources/src/RESearch.cpp
+    sources/src/RunStyles.cpp
+    sources/src/ScintillaBase.cpp
+    sources/src/Selection.cpp
+    sources/src/Style.cpp
+    sources/src/UniConversion.cpp
+    sources/src/ViewStyle.cpp
+    sources/src/XPM.cpp
 )
 
 target_link_libraries(qscintilla
@@ -240,3 +242,15 @@ target_compile_definitions(qscintilla
         SCINTILLA_QT
         SCI_LEXER)
 
+# Project produces three types of warnings that are all not critical.
+# We are turning them off to remove noise
+if (COMPILER_CLANG OR COMPILER_GCC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-dangling-else -Wno-parentheses -Wno-switch")
+elseif(COMPILER_MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4554 /wd4099")
+
+    # Suppress the following warning: MacPasteboardMime.obj : warning LNK4221: This object
+    # file does not define any previously undefined public symbols, so it will not be used
+    # by any link operation that consumes this library
+    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /IGNORE:4221")
+endif()

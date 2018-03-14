@@ -6,12 +6,12 @@ endif()
 ###
 # Settings
 #
-set(PROJECT_NAME "Robomongo" CACHE STRING "Project Name")
+set(PROJECT_NAME "Robo 3T" CACHE STRING "Project Name")
 set(PROJECT_NAME_TITLE ${PROJECT_NAME})
 set(PROJECT_DOMAIN "www.robomongo.org" CACHE STRING "Internet domain name for ${PROJECT_NAME}")
-set(PROJECT_COMPANYNAME "Paralect" CACHE STRING "Company name for ${PROJECT_NAME}")
-set(PROJECT_COPYRIGHT "Copyright (C) 2013-2015 ${PROJECT_COMPANYNAME} All Rights Reserved.")
-set(PROJECT_COMPANYNAME_DOMAIN "www.paralect.com" CACHE STRING "Internet domain name for ${PROJECT_NAME}")
+set(PROJECT_COMPANYNAME "3T Software Labs Ltd" CACHE STRING "Company name for ${PROJECT_NAME}")
+set(PROJECT_COPYRIGHT "Copyright (C) 2014-2017 ${PROJECT_COMPANYNAME} All Rights Reserved.")
+set(PROJECT_COMPANYNAME_DOMAIN "https://studio3t.com/" CACHE STRING "Internet domain name for ${PROJECT_NAME}")
 set(PROJECT_GITHUB_FORK "www.github.com/paralect/robomongo" CACHE STRING "Git fork of ${PROJECT_NAME}")
 set(PROJECT_GITHUB_ISSUES "www.github.com/paralect/robomongo/issues" CACHE STRING "Git issue link for ${PROJECT_NAME}")
 
@@ -194,7 +194,7 @@ IF(CPACK_SUPPORT)
     SET(CPACK_RESOURCE_FILE_WELCOME "../README.md")
 
     SET(CPACK_PACKAGE_VENDOR ${PROJECT_COMPANYNAME})#CPACK_RPM_PACKAGE_VENDOR
-    SET(CPACK_PACKAGE_CONTACT "Dmitry Schetnikovich <dima@paralect.com>")#CPACK_DEBIAN_PACKAGE_MAINTAINER
+    SET(CPACK_PACKAGE_CONTACT "robo3t@3t.io")#CPACK_DEBIAN_PACKAGE_MAINTAINER
     
     SET(CPACK_PACKAGE_VERSION_MAJOR ${MAJOR})
     SET(CPACK_PACKAGE_VERSION_MINOR ${MINOR})

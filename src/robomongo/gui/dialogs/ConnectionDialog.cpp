@@ -13,9 +13,9 @@
 #include "robomongo/gui/dialogs/ConnectionBasicTab.h"
 #include "robomongo/gui/dialogs/ConnectionAdvancedTab.h"
 #include "robomongo/gui/dialogs/ConnectionSslTab.h"
-#ifdef SSH_SUPPORT_ENABLED
+#include "robomongo/gui/dialogs/ConnectionSslTab.h"
 #include "robomongo/gui/dialogs/SSHTunnelTab.h"
-#endif
+#include "robomongo/gui/dialogs/SSLTab.h"
 #include "robomongo/gui/dialogs/ConnectionDiagnosticDialog.h"
 #include "robomongo/core/utils/QtUtils.h"
 
@@ -51,24 +51,14 @@ namespace Robomongo
         _basicTab    = new ConnectionBasicTab(_connection);
         _authTab     = new ConnectionAuthTab(_connection);
         _advancedTab = new ConnectionAdvancedTab(_connection);
-
-        // v0.9
-        //_sslTab      = new ConnectionSslTab(_connection);
-
-#ifdef SSH_SUPPORT_ENABLED
-        // v0.9
-        //_sshTab = new SshTunnelTab(_connection);
-#endif
+        _sshTab      = new SshTunnelTab(_connection);
+        _sslTab      = new SSLTab(_connection);
 
         tabWidget->addTab(_basicTab,    "Connection");
         tabWidget->addTab(_authTab,     "Authentication");
+        tabWidget->addTab(_sshTab,      "SSH");
+        tabWidget->addTab(_sslTab,      "SSL");
         tabWidget->addTab(_advancedTab, "Advanced");
-        // v0.9
-        //tabWidget->addTab(_sslTab,      "SSL");
-#ifdef SSH_SUPPORT_ENABLED
-        // v0.9
-        //tabWidget->addTab(_sshTab,      "SSH");
-#endif
 
         QVBoxLayout *mainLayout = new QVBoxLayout;
         mainLayout->addWidget(tabWidget);
@@ -76,6 +66,10 @@ namespace Robomongo
         setLayout(mainLayout);
 
         _basicTab->setFocus();
+        adjustSize();
+
+        // Set minimum width - adjustment after adding SSLTab
+        setMinimumWidth(550);
     }
 
     /**
@@ -83,29 +77,21 @@ namespace Robomongo
      */
     void ConnectionDialog::accept()
     {
-        if(validateAndApply()){
+        if (validateAndApply()) {
             QDialog::accept();
         }
     }
 
     bool ConnectionDialog::validateAndApply()
     {
-#ifdef SSH_SUPPORT_ENABLED
-        bool isSshAndSsl = _sslTab->isSslSupported() && _sshTab->isSshSupported();
-        if (isSshAndSsl) {
-            QMessageBox::warning(this, "Invalid Transport", "SSH and SSL cannot be enabled simultaneously. Please uncheck one of them.");
-            return false;
-        }
-#endif
-        _basicTab->accept();
         _authTab->accept();
         _advancedTab->accept();
 
-        // v0.9
-        // _sslTab->accept();
-#ifdef SSH_SUPPORT_ENABLED
-        _sshTab->accept();
-#endif
+        if (!_basicTab->accept() || !_sshTab->accept() || !_sslTab->accept())
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -114,9 +100,13 @@ namespace Robomongo
      */
     void ConnectionDialog::testConnection()
     {
-        if(validateAndApply()){
-            ConnectionDiagnosticDialog diag(_connection,this);
-            diag.exec();
-        }
+        if (!validateAndApply())
+            return;
+
+        ConnectionDiagnosticDialog diag(_connection, this);
+        if (!diag.continueExec())
+            return;
+
+        diag.exec();
     }
 }

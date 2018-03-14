@@ -46,32 +46,33 @@ set(MongoDB_DEFINITIONS
 # Set common compiler include directories
 set(MongoDB_INCLUDE_DIRS
     ${MongoDB_DIR}/src
-    ${MongoDB_DIR}/src/third_party/boost-1.56.0
-    ${MongoDB_DIR}/src/third_party/mozjs-38/include
-    ${MongoDB_DIR}/src/third_party/pcre-8.37
+    ${MongoDB_DIR}/src/third_party/boost-1.60.0
+    ${MongoDB_DIR}/src/third_party/mozjs-45/include
+    ${MongoDB_DIR}/src/third_party/mozjs-45/mongo_sources
+    ${MongoDB_DIR}/src/third_party/pcre-8.39
     ${MongoDB_BUILD_DIR}
 )
 
 if(SYSTEM_LINUX)
     set(MongoDB_OBJECT_LIST_PLATFORM_PART linux)
     list(APPEND MongoDB_INCLUDE_DIRS
-        ${MongoDB_DIR}/src/third_party/mozjs-38/platform/x86_64/linux/include)
+        ${MongoDB_DIR}/src/third_party/mozjs-45/platform/x86_64/linux/include)
 elseif(SYSTEM_WINDOWS)
     set(MongoDB_OBJECT_LIST_PLATFORM_PART windows)
     list(APPEND MongoDB_INCLUDE_DIRS
-        ${MongoDB_DIR}/src/third_party/mozjs-38/platform/x86_64/windows/include)
+        ${MongoDB_DIR}/src/third_party/mozjs-45/platform/x86_64/windows/include)
 elseif(SYSTEM_MACOSX)
     set(MongoDB_OBJECT_LIST_PLATFORM_PART macosx)
     list(APPEND MongoDB_INCLUDE_DIRS
-        ${MongoDB_DIR}/src/third_party/mozjs-38/platform/x86_64/osx/include)
+        ${MongoDB_DIR}/src/third_party/mozjs-45/platform/x86_64/osx/include)
 elseif(SYSTEM_FREEBSD)
     set(MongoDB_OBJECT_LIST_PLATFORM_PART freebsd)
     list(APPEND MongoDB_INCLUDE_DIRS
-        ${MongoDB_DIR}/src/third_party/mozjs-38/platform/x86_64/freebsd/include)
+        ${MongoDB_DIR}/src/third_party/mozjs-45/platform/x86_64/freebsd/include)
 elseif(SYSTEM_OPENBSD)
     set(MongoDB_OBJECT_LIST_PLATFORM_PART openbsd)
     list(APPEND MongoDB_INCLUDE_DIRS
-        ${MongoDB_DIR}/src/third_party/mozjs-38/platform/x86_64/openbsd/include)
+        ${MongoDB_DIR}/src/third_party/mozjs-45/platform/x86_64/openbsd/include)
 endif()
 
 # Read list of object files
@@ -90,6 +91,10 @@ foreach(lib ${MongoDB_RELATIVE_LIBS})
   list(APPEND MongoDB_LIBS ${MongoDB_DIR}/${lib})
 endforeach()
 
+if(SYSTEM_WINDOWS)
+  list(APPEND MongoDB_LIBS $ENV{WindowsSdkDir}/Lib/winv6.3/um/x64/Crypt32.Lib)
+endif()
+
 # Get MongoDB repository recent tag
 execute_process(
     COMMAND git describe --abbrev=0 --tags
@@ -102,9 +107,11 @@ execute_process(
 # all listed variables are TRUE
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(MongoDB
+    FOUND_VAR MongoDB_FOUND     # When using CMake 3.0 MONGODB_FOUND variable will be created.
+                                # Make it explicit that variable name is MongoDB_FOUND.
     REQUIRED_VARS MongoDB_DIR MongoDB_BUILD_DIR
     VERSION_VAR MongoDB_RECENT_TAG
-    FAIL_MESSAGE "Could not find MongoDB. Make sure that CMAKE_PREFIX_PATH points to MongoDB project root.\n")
+    FAIL_MESSAGE "Could not find Robomongo Shell (MongoDB fork). Make sure that CMAKE_PREFIX_PATH points to Robomongo Shell project root.\n")
 
 if(MongoDB_FOUND)
     set(MongoDB_VERSION ${MongoDB_RECENT_TAG})

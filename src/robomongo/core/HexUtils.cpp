@@ -36,7 +36,7 @@ namespace Robomongo
             char *data = new char[bytes];
 
             const char *p = s.c_str();
-            for( size_t i = 0; i < bytes; i++ ) {
+            for (size_t i = 0; i < bytes; i++) {
                 data[i] = mongo::fromHex(p);
                 p += 2;
             }
@@ -159,7 +159,7 @@ namespace Robomongo
             mongo::BinDataType binType = element.binDataType();
 
             if (binType != mongo::newUUID && binType != mongo::bdtUUID)
-                throw new std::invalid_argument("Binary subtype should be 3 (bdtUUID) or 4 (newUUID)");
+                throw std::invalid_argument("Binary subtype should be 3 (bdtUUID) or 4 (newUUID)");
 
             int len;
             const char *data = element.binData(len);

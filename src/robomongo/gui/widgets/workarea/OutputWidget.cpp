@@ -14,9 +14,8 @@ namespace Robomongo
 {
     OutputWidget::OutputWidget(QWidget *parent) :
         QFrame(parent),
-        _splitter(NULL)
+        _splitter(new QSplitter)
     {
-        _splitter = new QSplitter;
         _splitter->setOrientation(Qt::Vertical);
         _splitter->setHandleWidth(1);
         _splitter->setContentsMargins(0, 0, 0, 0);
@@ -35,11 +34,13 @@ namespace Robomongo
         if (_prevResultsCount > 0) {
             clearAllParts();
         }
-        int count = _prevResultsCount = results.size();
+        int const RESULTS_SIZE = _prevResultsCount = results.size();
+        bool const multipleResults = (RESULTS_SIZE > 1);
         
-        for (int i=0; i<count; ++i) {
+        _outputItemContentWidgets.clear();
+
+        for (int i = 0; i < RESULTS_SIZE; ++i) {
             MongoShellResult shellResult = results[i];
-            OutputItemContentWidget *output = NULL;
 
             double secs = shellResult.elapsedMs() / 1000.f;
             ViewMode viewMode = AppRegistry::instance().settingsManager()->viewMode();
@@ -48,35 +49,62 @@ namespace Robomongo
                 _prevViewModes.pop_back();
             }
 
+            bool const firstItem = (0 == i);
+            bool const lastItem = (RESULTS_SIZE-1 == i);
+
+            OutputItemContentWidget* item = nullptr;
             if (shellResult.documents().size() > 0) {
-                output = new OutputItemContentWidget(this, viewMode, shell, QtUtils::toQString(shellResult.type()), shellResult.documents(), shellResult.queryInfo(),secs);
+                item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.type()),
+                                                   shellResult.documents(), shellResult.queryInfo(), secs, 
+                                                   multipleResults, firstItem, lastItem, 
+                                                   shellResult.aggrInfo(), this);
             } else {
-                output = new OutputItemContentWidget(this, viewMode, shell, QtUtils::toQString(shellResult.response()),secs);
+                item = new OutputItemContentWidget(viewMode, shell, QtUtils::toQString(shellResult.response()), 
+                                                   secs, multipleResults, firstItem, lastItem, 
+                                                   shellResult.aggrInfo(), this);
             }
-            VERIFY(connect(output, SIGNAL(maximizedPart()), this, SLOT(maximizePart())));
-            VERIFY(connect(output, SIGNAL(restoredSize()), this, SLOT(restoreSize())));
-            _splitter->addWidget(output);
+            VERIFY(connect(item, SIGNAL(maximizedPart()), this, SLOT(maximizePart())));
+            VERIFY(connect(item, SIGNAL(restoredSize()), this, SLOT(restoreSize())));
+            _splitter->addWidget(item);
+            _outputItemContentWidgets.push_back(item);
         }
         
         tryToMakeAllPartsEqualInSize();
     }
 
-    void OutputWidget::updatePart(int partIndex, const MongoQueryInfo &queryInfo, const std::vector<MongoDocumentPtr> &documents)
+    void OutputWidget::updatePart(int partIndex, const MongoQueryInfo &queryInfo, 
+                                  const std::vector<MongoDocumentPtr> &documents)
     {
         if (partIndex >= _splitter->count())
             return;
 
-        OutputItemContentWidget *output = (OutputItemContentWidget *) _splitter->widget(partIndex);
-        output->update(queryInfo,documents);
-        output->refreshOutputItem();
+        auto outputItemContentWidget = qobject_cast<OutputItemContentWidget*>(_splitter->widget(partIndex));
+        outputItemContentWidget->updateWithInfo(queryInfo, documents);
+        outputItemContentWidget->refreshOutputItem();
+    }
+
+    void OutputWidget::updatePart(int partIndex, const AggrInfo &agrrInfo, 
+                                  const std::vector<MongoDocumentPtr> &documents)
+    {
+        if (partIndex >= _splitter->count())
+            return;
+
+        auto outputItemContentWidget = qobject_cast<OutputItemContentWidget*>(_splitter->widget(partIndex));
+        outputItemContentWidget->updateWithInfo(agrrInfo, documents);
+        outputItemContentWidget->refreshOutputItem();
     }
 
     void OutputWidget::toggleOrientation()
     {
-        if (_splitter->orientation() == Qt::Horizontal)
-            _splitter->setOrientation(Qt::Vertical);
-        else
-            _splitter->setOrientation(Qt::Horizontal);
+        bool const horizontal = _splitter->orientation() == Qt::Horizontal;
+        _splitter->setOrientation(horizontal ? Qt::Vertical : Qt::Horizontal);
+        int const COUNT = _splitter->count();
+        if (COUNT > 1) {
+            auto const* firstItem = qobject_cast<OutputItemContentWidget*>(_splitter->widget(0));
+            auto const* lastItem = qobject_cast<OutputItemContentWidget*>(_splitter->widget(COUNT-1));
+            firstItem->toggleOrientation(_splitter->orientation());
+            lastItem->toggleOrientation(_splitter->orientation());
+        }
     }
 
     void OutputWidget::enterTreeMode()
@@ -152,6 +180,18 @@ namespace Robomongo
     void OutputWidget::hideProgress()
     {
         _progressBarPopup->hide();
+    }
+
+    void OutputWidget::applyDockUndockSettings(bool isDocking) const
+    {
+        for (auto const& item : _outputItemContentWidgets) {
+            item->applyDockUndockSettings(isDocking);
+        }
+    }
+
+    Qt::Orientation OutputWidget::getOrientation() const
+    {
+        return _splitter->orientation();
     }
 
     void OutputWidget::clearAllParts()
